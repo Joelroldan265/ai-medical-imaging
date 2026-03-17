@@ -7,8 +7,9 @@ import streamlit as st
 from agno.tools.duckduckgo import DuckDuckGoTools
 from agno.media import Image as AgnoImage
 
+# Lee la API Key de los secrets de Streamlit automáticamente
 if "GOOGLE_API_KEY" not in st.session_state:
-    st.session_state.GOOGLE_API_KEY = None
+    st.session_state.GOOGLE_API_KEY = st.secrets.get("GOOGLE_API_KEY", None)
 
 with st.sidebar:
     st.title("ℹ️ Configuración")
@@ -27,7 +28,7 @@ with st.sidebar:
             st.success("¡API Key guardada!")
             st.rerun()
     else:
-        st.success("API Key configurada correctamente")
+        st.success("✅ API Key configurada")
         if st.button("🔄 Cambiar API Key"):
             st.session_state.GOOGLE_API_KEY = None
             st.rerun()
@@ -54,7 +55,6 @@ medical_agent = Agent(
 if not medical_agent:
     st.warning("Por favor configura tu API Key en el panel lateral para continuar")
 
-# Consulta de análisis médico en español
 query = """
 Eres un experto altamente capacitado en imágenes médicas con amplio conocimiento en radiología y diagnóstico por imagen. Analiza la imagen médica del paciente y estructura tu respuesta de la siguiente manera:
 
@@ -96,7 +96,6 @@ Formatea tu respuesta usando encabezados markdown claros y puntos. Sé conciso p
 st.title("🏥 Agente de Diagnóstico por Imágenes Médicas")
 st.write("Sube una imagen médica para obtener un análisis profesional con IA")
 
-# Contenedores para mejor organización
 upload_container = st.container()
 image_container = st.container()
 analysis_container = st.container()
@@ -133,25 +132,24 @@ if uploaded_file is not None:
     
     with analysis_container:
         if analyze_button:
-            with st.spinner("🔄 Analizando imagen... Por favor espera."):
-                try:
-                    temp_path = "temp_resized_image.png"
-                    resized_image.save(temp_path)
-                    
-                    # Crear objeto AgnoImage
-                    agno_image = AgnoImage(filepath=temp_path)
-                    
-                    # Ejecutar análisis
-                    response: RunOutput = medical_agent.run(query, images=[agno_image])
-                    st.markdown("### 📋 Resultados del Análisis")
-                    st.markdown("---")
-                    st.markdown(response.content)
-                    st.markdown("---")
-                    st.caption(
-                        "Nota: Este análisis es generado por IA y debe ser revisado por "
-                        "un profesional de salud calificado."
-                    )
-                except Exception as e:
-                    st.error(f"Error en el análisis: {e}")
+            if not medical_agent:
+                st.error("❌ Configura tu API Key primero.")
+            else:
+                with st.spinner("🔄 Analizando imagen... Por favor espera."):
+                    try:
+                        temp_path = "temp_resized_image.png"
+                        resized_image.save(temp_path)
+                        agno_image = AgnoImage(filepath=temp_path)
+                        response: RunOutput = medical_agent.run(query, images=[agno_image])
+                        st.markdown("### 📋 Resultados del Análisis")
+                        st.markdown("---")
+                        st.markdown(response.content)
+                        st.markdown("---")
+                        st.caption(
+                            "Nota: Este análisis es generado por IA y debe ser revisado por "
+                            "un profesional de salud calificado."
+                        )
+                    except Exception as e:
+                        st.error(f"Error en el análisis: {e}")
 else:
     st.info("👆 Por favor sube una imagen médica para comenzar el análisis")
